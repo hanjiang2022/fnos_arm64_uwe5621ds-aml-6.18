@@ -31,26 +31,23 @@ if [[ $TREE_RELEASE != "$KERNEL_RELEASE" ]]; then
   echo "提示: 内核树 kernelrelease=$TREE_RELEASE，模块 vermagic=$KERNEL_RELEASE；按实际模块版本归档。" >&2
 fi
 RELEASE_DIR="$SOURCE_DIR/releases/$KERNEL_RELEASE/aarch64"
+FIRMWARE_SOURCE=${FIRMWARE_DIR:-$SOURCE_DIR/firmware}
+for firmware in wcnmodem.bin wifi_56630001_3ant.ini; do
+  [[ -f "$FIRMWARE_SOURCE/$firmware" ]] || {
+    echo "缺少固件 $FIRMWARE_SOURCE/$firmware；可通过 FIRMWARE_DIR 指定成套固件来源。" >&2
+    exit 1
+  }
+done
+DTB_SOURCE=${DTB_FILE:-$SOURCE_DIR/dtb/meson-sm1-a95xf3-air_spdif_uwe5621ds_gbit.dtb}
+[[ -f $DTB_SOURCE ]] || { echo "缺少 DTB $DTB_SOURCE" >&2; exit 1; }
 mkdir -p "$RELEASE_DIR"
 for module in "${modules[@]}"; do
   install -m 0644 "$SOURCE_DIR/$module" "$RELEASE_DIR/"
 done
-if [[ -n ${FIRMWARE_DIR:-} ]]; then
-  for firmware in wcnmodem.bin wifi_56630001_3ant.ini; do
-    [[ -f "$FIRMWARE_DIR/$firmware" ]] || {
-      echo "缺少指定的固件 $FIRMWARE_DIR/$firmware" >&2
-      exit 1
-    }
-    install -m 0644 "$FIRMWARE_DIR/$firmware" "$RELEASE_DIR/"
-  done
-fi
-DTB_SOURCE=${DTB_FILE:-$SOURCE_DIR/dtb/meson-sm1-a95xf3-air_spdif_uwe5621ds_gbit.dtb}
-[[ -f $DTB_SOURCE ]] || { echo "缺少 DTB $DTB_SOURCE" >&2; exit 1; }
+for firmware in wcnmodem.bin wifi_56630001_3ant.ini; do
+  install -m 0644 "$FIRMWARE_SOURCE/$firmware" "$RELEASE_DIR/"
+done
+echo "固件来源: $FIRMWARE_SOURCE（请确认与当前硬件匹配）"
 install -m 0644 "$DTB_SOURCE" "$RELEASE_DIR/meson-sm1-a95xf3-air_spdif_uwe5621ds_gbit.dtb"
 install -m 0755 "$SOURCE_DIR/install_uwe5621.sh" "$SOURCE_DIR/install_uwe5621_btattach.sh" "$RELEASE_DIR/"
 echo "发布目录: $RELEASE_DIR"
-for file in wcnmodem.bin wifi_56630001_3ant.ini; do
-  if [[ ! -f "$RELEASE_DIR/$file" ]]; then
-    echo "提示: $RELEASE_DIR/$file 不存在；完整安装前请提供适配当前硬件的文件。" >&2
-  fi
-done

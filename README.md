@@ -8,6 +8,7 @@
 | --- | --- |
 | `releases/<uname -r>/aarch64/` | 对应内核的 DTB、三个 KO、两个固件文件及两个安装脚本，文件直接放在此目录 |
 | `dtb/meson-sm1-a95xf3-air_spdif_uwe5621ds_gbit.dts` | 板卡设备树源文件；已编译 DTB 也保存在 `dtb/` |
+| `firmware/` | 构建时默认使用的固件与 Wi-Fi INI；独立于内核发布版本 |
 | `build.sh` | 编译 KO 并整理到对应发布目录，**不会在构建主机安装模块** |
 | `install_uwe5621.sh` | 一次安装 DTB、KO、固件并配置开机加载；发布目录内也有副本 |
 | `install_uwe5621_btattach.sh` | **仅**安装并启动蓝牙 `btattach` 服务；发布目录内也有副本 |
@@ -29,11 +30,11 @@ sudo apt-get update
 sudo apt-get install -y bluez rfkill
 sudo bash ./install_uwe5621.sh \
   --source-dir "$PWD" \
-  --dtb-target /boot/dtb/amlogic/meson-sm1-a95xf3-air-gbit.dtb
+  --dtb-target /boot/dtb/amlogic/meson-sm1-a95xf3-air_gbit.dtb
 sudo reboot
 ```
 
-脚本在发布目录内运行时可省略 `--source-dir`；在仓库根目录运行时也会优先使用本地匹配版本的发布目录。若没有本地文件，则从仓库 `main` 分支的 GitHub raw 地址下载 `releases/$(uname -r)/aarch64/` 的文件，需要 `curl` 或 `wget` 及网络连接。若 `/boot` 下有多个候选 DTB，必须明确指定 `--dtb-target`。**不要在没有确认启动路径的情况下猜测 DTB 目标。**
+脚本在发布目录内运行时可省略 `--source-dir`；在仓库根目录运行时也会优先使用本地匹配版本的发布目录。若没有本地文件，则从仓库 `main` 分支的 GitHub raw 地址下载 `releases/$(uname -r)/aarch64/` 的文件，需要 `curl` 或 `wget` 及网络连接。默认安装目标为 `/boot/dtb/amlogic/meson-sm1-a95xf3-air_gbit.dtb`；如果实际启动路径不同，务必使用 `--dtb-target` 明确指定。**安装前确认目标文件是本机正在使用的启动 DTB，脚本会备份后替换它；仅运行 `build.sh` 不会写入 `/boot`。**
 
 脚本会安装模块到 `/lib/modules/$(uname -r)/extra/uwe5621/`，固件到 `/lib/firmware/uwe5621/wcnmodem.bin`，配置到 `/lib/firmware/wifi_56630001_3ant.ini`，并设置模块开机加载、禁用 NetworkManager 的 Wi-Fi 省电及启用蓝牙 `uwe5621-bluetooth.service`。已有的 DTB、KO 和固件会生成带时间戳的 `.bak.*` 备份。完整安装脚本**不会自动安装** `bluez`/`rfkill`，请先执行上面的 apt 命令。
 
@@ -138,7 +139,7 @@ KDIR="$KDIR" CROSS_COMPILE=aarch64-linux-gnu- bash ./build.sh
 modinfo -F vermagic unisocwcn/uwe5621_bsp_sdio.ko
 ```
 
-`build.sh` 检查三个 KO 的 `vermagic` 版本一致后，按模块实际版本生成 `releases/<模块版本>/aarch64/`，归档三个 KO、`dtb/meson-sm1-a95xf3-air_spdif_uwe5621ds_gbit.dtb` 和两个安装脚本。这里按已确认适用的当前板卡 DTB 处理；若板卡发生变化，请先核对设备树，避免覆盖错误的启动文件。若内核树的 `make kernelrelease` 与 KO 的版本不同（例如 `6.18.18` 与 `6.18.18.c1151-trim`），脚本会提示差异并按 KO 版本归档；安装前仍须核对目标机 `uname -r`，不一致时不要强行加载。构建时出现 `Skipping BTF generation ... due to unavailability of vmlinux` 是没有 `vmlinux` 时的提示，不是导致此次构建停止的错误。脚本不会自动把旧版本的固件复制到新版本目录。若已确认适用的固件来源，可显式指定；需要覆盖默认 DTB 时再指定 `DTB_FILE`：
+`build.sh` 检查三个 KO 的 `vermagic` 版本一致后，按模块实际版本生成 `releases/<模块版本>/aarch64/`，归档三个 KO、`dtb/meson-sm1-a95xf3-air_spdif_uwe5621ds_gbit.dtb`、成套固件和两个安装脚本。默认固件来源为独立的 `firmware/` 目录，不绑定任何内核版本；该目录的 `wcnmodem.bin` 与 INI 均从 `releases/6.18.18.c1151-trim/aarch64/` 原样复制，SHA-256 一致。**这不代表已经验证新硬件兼容。**特别注意 `unisocwcn/fw/wcnmodem.bin` 与该固件内容不同，不能混用来源。若需要不同固件，请把 `wcnmodem.bin` 和 `wifi_56630001_3ant.ini` 放到同一目录并设置 `FIRMWARE_DIR`。构建脚本仅写入发布目录，不写 `/boot`。若内核树的 `make kernelrelease` 与 KO 的版本不同（例如 `6.18.18` 与 `6.18.18.c1151-trim`），脚本会提示差异并按 KO 版本归档；安装前仍须核对目标机 `uname -r`，不一致时不要强行加载。构建时出现 `Skipping BTF generation ... due to unavailability of vmlinux` 是没有 `vmlinux` 时的提示，不是导致此次构建停止的错误。需要覆盖默认 DTB 时可指定 `DTB_FILE`：
 
 ```sh
 KDIR=/path/to/target-arm64-kernel-build \
@@ -146,4 +147,4 @@ FIRMWARE_DIR=/path/to/verified-firmware \
 bash ./build.sh
 ```
 
-也可以在编译完成后手工将适用的 `wcnmodem.bin` 和 `wifi_56630001_3ant.ini` 放到对应发布目录；若需使用另一个已确认适配的 DTB，可设置 `DTB_FILE=/path/to/verified-board.dtb` 重新运行脚本。**固件可能与芯片/射频配置有关，不要仅因内核版本接近就直接沿用旧文件。**全部文件备齐后，可将发布目录存档或复制到目标机运行其中的安装脚本，无需再次编译。
+若需使用另一个已确认适配的 DTB，可设置 `DTB_FILE=/path/to/verified-board.dtb` 重新运行脚本。**固件可能与芯片/射频配置有关，不要仅因内核版本接近就认为旧文件适用。**确认发布文件与硬件匹配后，可将发布目录存档或复制到目标机运行其中的安装脚本，无需再次编译。

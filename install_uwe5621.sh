@@ -8,9 +8,9 @@ SOURCE_DIR=${UWE5621_SOURCE_DIR:-}
 ARCHITECTURE=aarch64
 RELEASE_PATH=releases/${KERNEL_RELEASE}/${ARCHITECTURE}
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-DTB_TARGET=${UWE5621_DTB_TARGET:-}
+DTB_TARGET=${UWE5621_DTB_TARGET:-/boot/dtb/amlogic/meson-sm1-a95xf3-air_gbit.dtb}
 DTB_NAME=meson-sm1-a95xf3-air_spdif_uwe5621ds_gbit.dtb
-ORIGINAL_DTB_NAME=meson-sm1-a95xf3-air-gbit.dtb
+ORIGINAL_DTB_NAME=meson-sm1-a95xf3-air_gbit.dtb
 MODULE_DIR=/lib/modules/${KERNEL_RELEASE}/extra/uwe5621
 FIRMWARE_DIR=/lib/firmware/uwe5621
 WIFI_INI_DIR=/lib/firmware
@@ -34,7 +34,7 @@ Usage:
 Options:
   --url URL            Repository raw URL. Defaults to the ktpeng2026 GitHub repo.
   --source-dir DIR     Repository checkout or releases/<kernel>/aarch64 directory.
-  --dtb-target PATH    Existing boot DTB path to replace. Auto-detected when omitted.
+  --dtb-target PATH    Existing boot DTB path to replace. Defaults to /boot/dtb/amlogic/${ORIGINAL_DTB_NAME}.
   --install-mac-file   Install unisoc_wifi_mac.txt if it exists in the source.
   -h, --help           Show this help.
 
@@ -156,27 +156,6 @@ backup_and_install() {
   log "installed: ${destination}"
 }
 
-detect_dtb_target() {
-  local matches=()
-
-  while IFS= read -r path; do
-    matches+=("${path}")
-  done < <(find /boot -type f \
-    \( -name "${DTB_NAME}" -o -name "${ORIGINAL_DTB_NAME}" \) \
-    2>/dev/null | sort)
-
-  if ((${#matches[@]} == 1)); then
-    DTB_TARGET=${matches[0]}
-    return
-  fi
-  if ((${#matches[@]} > 1)); then
-    printf '[uwe5621] Multiple DTB targets found:\n' >&2
-    printf '  %s\n' "${matches[@]}" >&2
-    die "rerun with --dtb-target PATH"
-  fi
-  die "cannot find a supported board DTB under /boot; rerun with --dtb-target PATH"
-}
-
 log "kernel: ${KERNEL_RELEASE}"
 log "collecting installation files"
 
@@ -199,7 +178,6 @@ for module in "${MODULES[@]}"; do
   fi
 done
 
-[[ -n ${DTB_TARGET} ]] || detect_dtb_target
 [[ -f ${DTB_TARGET} ]] || die "DTB target does not exist: ${DTB_TARGET}"
 
 log "installing DTB to ${DTB_TARGET}"
