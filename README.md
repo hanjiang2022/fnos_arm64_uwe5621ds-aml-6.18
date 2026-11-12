@@ -138,13 +138,12 @@ KDIR="$KDIR" CROSS_COMPILE=aarch64-linux-gnu- bash ./build.sh
 modinfo -F vermagic unisocwcn/uwe5621_bsp_sdio.ko
 ```
 
-`build.sh` 检查三个 KO 的 `vermagic` 版本一致后，按模块实际版本生成 `releases/<模块版本>/aarch64/`，归档三个 KO 和两个安装脚本。若内核树的 `make kernelrelease` 与 KO 的版本不同（例如 `6.18.18` 与 `6.18.18.c1151-trim`），脚本会提示差异并按 KO 版本归档；安装前仍须核对目标机 `uname -r`，不一致时不要强行加载。构建时出现 `Skipping BTF generation ... due to unavailability of vmlinux` 是没有 `vmlinux` 时的提示，不是导致此次构建停止的错误。脚本不会自动把旧硬件的 DTB 或固件复制到新版本目录。若已确认新硬件适用的 DTB 和固件，可显式指定来源，再次运行构建脚本：
+`build.sh` 检查三个 KO 的 `vermagic` 版本一致后，按模块实际版本生成 `releases/<模块版本>/aarch64/`，归档三个 KO、`dtb/meson-sm1-a95xf3-air_spdif_uwe5621ds_gbit.dtb` 和两个安装脚本。这里按已确认适用的当前板卡 DTB 处理；若板卡发生变化，请先核对设备树，避免覆盖错误的启动文件。若内核树的 `make kernelrelease` 与 KO 的版本不同（例如 `6.18.18` 与 `6.18.18.c1151-trim`），脚本会提示差异并按 KO 版本归档；安装前仍须核对目标机 `uname -r`，不一致时不要强行加载。构建时出现 `Skipping BTF generation ... due to unavailability of vmlinux` 是没有 `vmlinux` 时的提示，不是导致此次构建停止的错误。脚本不会自动把旧版本的固件复制到新版本目录。若已确认适用的固件来源，可显式指定；需要覆盖默认 DTB 时再指定 `DTB_FILE`：
 
 ```sh
 KDIR=/path/to/target-arm64-kernel-build \
 FIRMWARE_DIR=/path/to/verified-firmware \
-DTB_FILE=/path/to/verified-board.dtb \
 bash ./build.sh
 ```
 
-也可以在编译完成后手工将适用的 `wcnmodem.bin`、`wifi_56630001_3ant.ini` 和板卡 DTB 放到对应发布目录；安装脚本要求 DTB 文件名为 `meson-sm1-a95xf3-air_spdif_uwe5621ds_gbit.dtb`。**固件可能与芯片/射频配置有关，DTB 与板卡接线有关，不要仅因内核版本接近就直接沿用旧文件。**全部文件备齐后，可将发布目录存档或复制到目标机运行其中的安装脚本，无需再次编译。
+也可以在编译完成后手工将适用的 `wcnmodem.bin` 和 `wifi_56630001_3ant.ini` 放到对应发布目录；若需使用另一个已确认适配的 DTB，可设置 `DTB_FILE=/path/to/verified-board.dtb` 重新运行脚本。**固件可能与芯片/射频配置有关，不要仅因内核版本接近就直接沿用旧文件。**全部文件备齐后，可将发布目录存档或复制到目标机运行其中的安装脚本，无需再次编译。

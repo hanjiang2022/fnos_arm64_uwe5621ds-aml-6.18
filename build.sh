@@ -44,13 +44,12 @@ if [[ -n ${FIRMWARE_DIR:-} ]]; then
     install -m 0644 "$FIRMWARE_DIR/$firmware" "$RELEASE_DIR/"
   done
 fi
-if [[ -n ${DTB_FILE:-} ]]; then
-  [[ -f $DTB_FILE ]] || { echo "缺少指定的 DTB $DTB_FILE" >&2; exit 1; }
-  install -m 0644 "$DTB_FILE" "$RELEASE_DIR/meson-sm1-a95xf3-air_spdif_uwe5621ds_gbit.dtb"
-fi
+DTB_SOURCE=${DTB_FILE:-$SOURCE_DIR/dtb/meson-sm1-a95xf3-air_spdif_uwe5621ds_gbit.dtb}
+[[ -f $DTB_SOURCE ]] || { echo "缺少 DTB $DTB_SOURCE" >&2; exit 1; }
+install -m 0644 "$DTB_SOURCE" "$RELEASE_DIR/meson-sm1-a95xf3-air_spdif_uwe5621ds_gbit.dtb"
 install -m 0755 "$SOURCE_DIR/install_uwe5621.sh" "$SOURCE_DIR/install_uwe5621_btattach.sh" "$RELEASE_DIR/"
 echo "发布目录: $RELEASE_DIR"
-for file in wcnmodem.bin wifi_56630001_3ant.ini meson-sm1-a95xf3-air_spdif_uwe5621ds_gbit.dtb; do
+for file in wcnmodem.bin wifi_56630001_3ant.ini; do
   if [[ ! -f "$RELEASE_DIR/$file" ]]; then
     echo "提示: $RELEASE_DIR/$file 不存在；完整安装前请提供适配当前硬件的文件。" >&2
   fi
