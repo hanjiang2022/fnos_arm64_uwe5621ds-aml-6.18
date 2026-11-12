@@ -138,7 +138,7 @@ KDIR="$KDIR" CROSS_COMPILE=aarch64-linux-gnu- bash ./build.sh
 modinfo -F vermagic unisocwcn/uwe5621_bsp_sdio.ko
 ```
 
-`build.sh` 根据目标内核构建目录的 `kernelrelease` 生成 `releases/<kernelrelease>/aarch64/`，归档三个 KO 和两个安装脚本。它不会自动把旧硬件的 DTB 或固件复制到新版本目录。若已确认新硬件适用的 DTB 和固件，可显式指定来源，再次运行构建脚本：
+`build.sh` 检查三个 KO 的 `vermagic` 版本一致后，按模块实际版本生成 `releases/<模块版本>/aarch64/`，归档三个 KO 和两个安装脚本。若内核树的 `make kernelrelease` 与 KO 的版本不同（例如 `6.18.18` 与 `6.18.18.c1151-trim`），脚本会提示差异并按 KO 版本归档；安装前仍须核对目标机 `uname -r`，不一致时不要强行加载。构建时出现 `Skipping BTF generation ... due to unavailability of vmlinux` 是没有 `vmlinux` 时的提示，不是导致此次构建停止的错误。脚本不会自动把旧硬件的 DTB 或固件复制到新版本目录。若已确认新硬件适用的 DTB 和固件，可显式指定来源，再次运行构建脚本：
 
 ```sh
 KDIR=/path/to/target-arm64-kernel-build \

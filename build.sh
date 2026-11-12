@@ -4,10 +4,9 @@ set -euo pipefail
 SOURCE_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 KDIR=${KDIR:-/lib/modules/$(uname -r)/build}
 CROSS_COMPILE=${CROSS_COMPILE:-}
-KERNEL_RELEASE=$(make -s -C "$KDIR" ARCH=arm64 CROSS_COMPILE="$CROSS_COMPILE" kernelrelease)
-[[ -n $KERNEL_RELEASE ]] || { echo '无法读取内核版本' >&2; exit 1; }
+TREE_RELEASE=$(make -s -C "$KDIR" ARCH=arm64 CROSS_COMPILE="$CROSS_COMPILE" kernelrelease)
+[[ -n $TREE_RELEASE ]] || { echo '无法读取内核版本' >&2; exit 1; }
 
-RELEASE_DIR="$SOURCE_DIR/releases/$KERNEL_RELEASE/aarch64"
 make -C "$SOURCE_DIR" KDIR="$KDIR" ARCH=arm64 CROSS_COMPILE="$CROSS_COMPILE" -j"$(nproc)"
 
 modules=(
@@ -15,14 +14,23 @@ modules=(
   unisocwifi/sprdwl_ng.ko
   tty-sdio/sprdbt_tty.ko
 )
+KERNEL_RELEASE=
 for module in "${modules[@]}"; do
   vermagic=$(modinfo -F vermagic "$SOURCE_DIR/$module")
-  [[ ${vermagic%% *} == "$KERNEL_RELEASE" ]] || {
-    echo "模块 $module 的 vermagic 不匹配: $vermagic" >&2
+  module_release=${vermagic%% *}
+  [[ -n $module_release ]] || { echo "无法读取模块 $module 的 vermagic" >&2; exit 1; }
+  if [[ -z $KERNEL_RELEASE ]]; then
+    KERNEL_RELEASE=$module_release
+  elif [[ $module_release != "$KERNEL_RELEASE" ]]; then
+    echo "模块 $module 的 vermagic 与其他模块不一致: $vermagic" >&2
     exit 1
-  }
+  fi
 done
 
+if [[ $TREE_RELEASE != "$KERNEL_RELEASE" ]]; then
+  echo "提示: 内核树 kernelrelease=$TREE_RELEASE，模块 vermagic=$KERNEL_RELEASE；按实际模块版本归档。" >&2
+fi
+RELEASE_DIR="$SOURCE_DIR/releases/$KERNEL_RELEASE/aarch64"
 mkdir -p "$RELEASE_DIR"
 for module in "${modules[@]}"; do
   install -m 0644 "$SOURCE_DIR/$module" "$RELEASE_DIR/"
