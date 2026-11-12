@@ -115,7 +115,7 @@ KDIR="$KDIR" bash ./build.sh
 modinfo -F vermagic unisocwcn/uwe5621_bsp_sdio.ko
 ```
 
-如果构建目录不是 `/lib/modules/$(uname -r)/build`，将 `KDIR` 改为对应的内核构建目录。`build.sh` 仅编译并归档，不安装/加载模块；运行前需在对应发布目录中准备 `wcnmodem.bin` 和 `wifi_56630001_3ant.ini`。
+如果构建目录不是 `/lib/modules/$(uname -r)/build`，将 `KDIR` 改为对应的内核构建目录。`build.sh` 仅编译并归档，不安装/加载模块；**没有固件也可以编译 KO**。新内核的发布目录首次创建时可能只有 KO 和脚本，不能直接运行完整安装脚本。
 
 ### x86_64 主机交叉编译 ARM64
 
@@ -138,4 +138,13 @@ KDIR="$KDIR" CROSS_COMPILE=aarch64-linux-gnu- bash ./build.sh
 modinfo -F vermagic unisocwcn/uwe5621_bsp_sdio.ko
 ```
 
-`build.sh` 根据目标内核构建目录的 `kernelrelease` 生成 `releases/<kernelrelease>/aarch64/`，拷贝编译好的三个 KO、板卡 DTB 及两个安装脚本；固件需预先放入同一发布目录，脚本不会凭空生成或跨版本复制固件。构建后可把整个目录存档或复制到目标机，直接运行其中的 `install_uwe5621.sh`，无需再次编译。核对每个 KO 的 `vermagic`、目标架构和目标内核后再加载。
+`build.sh` 根据目标内核构建目录的 `kernelrelease` 生成 `releases/<kernelrelease>/aarch64/`，归档三个 KO 和两个安装脚本。它不会自动把旧硬件的 DTB 或固件复制到新版本目录。若已确认新硬件适用的 DTB 和固件，可显式指定来源，再次运行构建脚本：
+
+```sh
+KDIR=/path/to/target-arm64-kernel-build \
+FIRMWARE_DIR=/path/to/verified-firmware \
+DTB_FILE=/path/to/verified-board.dtb \
+bash ./build.sh
+```
+
+也可以在编译完成后手工将适用的 `wcnmodem.bin`、`wifi_56630001_3ant.ini` 和板卡 DTB 放到对应发布目录；安装脚本要求 DTB 文件名为 `meson-sm1-a95xf3-air_spdif_uwe5621ds_gbit.dtb`。**固件可能与芯片/射频配置有关，DTB 与板卡接线有关，不要仅因内核版本接近就直接沿用旧文件。**全部文件备齐后，可将发布目录存档或复制到目标机运行其中的安装脚本，无需再次编译。
